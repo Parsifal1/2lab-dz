@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Go/utils/"
+	"lab1/utils"
 	"log"
 )
 
