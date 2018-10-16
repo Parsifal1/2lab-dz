@@ -11,7 +11,7 @@ import (
 // ZipFiles - Сжатие в один архив нескольких файлов
 // zipName - параметр для названия zip архива
 // filesDir - имя папки с файлами, которые нужно добавить в архив
-func ZipFiles(zipName string, filesDir string) error {
+func ZipFiles(zipName string, filesDir string) (err error) {
 	// вытаскиваем все файлы из папки в массив files, сохраняя их в типе os.FileInfo
 	files, err := ioutil.ReadDir(filesDir)
 	if err != nil {
