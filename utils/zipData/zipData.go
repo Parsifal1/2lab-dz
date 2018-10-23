@@ -1,9 +1,10 @@
-package zipDir
+package zipData
 
 import (
 	"archive/zip"
 	"io"
 	"io/ioutil"
+	"lab1/utils/fileMeta"
 	"log"
 	"os"
 )
@@ -57,6 +58,18 @@ func ZipFiles(zipName string, filesDir string) (err error) {
 		if _, err = io.Copy(writer, zippingfile); err != nil { //копируем файл в полученный Writer
 			return err
 		}
+
+		var meta *fileMeta.FileMetaStruct
+
+		if meta, err = fileMeta.FileMeta(info); err != nil {
+			return err
+		}
+		meta.Name = "hello"
 	}
 	return nil
+}
+
+type FileCollector struct {
+	Zip      *zip.Writer
+	MetaData []*fileMeta.FileMetaStruct
 }
