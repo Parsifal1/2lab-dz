@@ -2,74 +2,135 @@ package zipData
 
 import (
 	"archive/zip"
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"lab1/utils/fileMeta"
-	"log"
 	"os"
+	"path"
 )
 
-// ZipFiles - Сжатие в один архив нескольких файлов
-// zipName - параметр для названия zip архива
-// filesDir - имя папки с файлами, которые нужно добавить в архив
-func ZipFiles(zipName string, filesDir string) (err error) {
-	// вытаскиваем все файлы из папки в массив files, сохраняя их в типе os.FileInfo
-	files, err := ioutil.ReadDir(filesDir)
-	if err != nil {
-		log.Fatal(err)
+//ZipFiles - создаем сборщик метаданных, передаем его методу перебора указанной директории,
+//в котором также упаковываем файлы в архив, выводим метаданные в json, закрываем writer,
+//сохраняем архив
+func ZipFiles() (err error) {
+
+	collector := NewFileCollector()
+
+	if err = walkFiles(collector, "./filesDir"); err != nil {
+		return
 	}
-	// создаем переменную newZipFile с заданным именем : тип File
-	newZipFile, err := os.Create(zipName)
-	if err != nil {
-		return err
+
+	var js []byte
+
+	if js, err = collector.meta2json(); err != nil {
+		return
 	}
-	defer newZipFile.Close() //в конце программы закрываем создание
 
-	zipWriter := zip.NewWriter(newZipFile)
-	defer zipWriter.Close()
+	fmt.Println("Метаданные: ", js)
 
-	// Добавление файлов в архив
-	for _, file := range files {
-		filename := filesDir + "/" + file.Name()
-		zippingfile, err := os.Open(filename) //открываем архивируемый файл для:
-		if err != nil {
-			return err
-		}
-		defer zippingfile.Close() //закрываем архивируемый файл
+	var zipData []byte
 
-		info, err := zippingfile.Stat() //получаем fileInfo архивируемого файла
-		if err != nil {
-			return err
-		}
-
-		header, err := zip.FileInfoHeader(info) //из полученного fileInfo делаем fileHeader
-		if err != nil {
-			return err
-		}
-
-		header.Name = filename //записываем название файла в fileHeader
-
-		header.Method = zip.Deflate //записываем метод сжатия файла в fileHeader
-
-		writer, err := zipWriter.CreateHeader(header) //создаем Writer из полученных данных в fileHeader для записи в архив
-		if err != nil {
-			return err
-		}
-		if _, err = io.Copy(writer, zippingfile); err != nil { //копируем файл в полученный Writer
-			return err
-		}
-
-		var meta *fileMeta.FileMetaStruct
-
-		if meta, err = fileMeta.FileMeta(info); err != nil {
-			return err
-		}
-		meta.Name = "hello"
+	if zipData, err = collector.zipData(); err != nil {
+		return
 	}
-	return nil
+
+	if err = ioutil.WriteFile("archive.zip", zipData, 0644); err != nil {
+		return
+	}
+
+	return
 }
 
+func walkFiles(collector *FileCollector, filepath string) (err error) {
+	var files []os.FileInfo
+
+	if files, err = ioutil.ReadDir(filepath); err != nil {
+		return
+	}
+
+	for i := range files {
+
+		fullPath := path.Join(filepath, files[i].Name())
+
+		if files[i].IsDir() {
+			if err = walkFiles(collector, fullPath); err != nil {
+				return
+			}
+			continue
+		}
+		collector.addMeta(fullPath)
+
+		var fileReader *os.File
+
+		if fileReader, err = os.Open(fullPath); err != nil {
+			return
+		}
+
+		if err = collector.packFile(fullPath, fileReader); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+//FileMeta - единица передачи метаданных файла
+type FileMeta struct {
+	Name string // `json: "filename"`
+}
+
+//FileCollector - для сбора итогового файла
 type FileCollector struct {
+	ZipBuf   *bytes.Buffer
 	Zip      *zip.Writer
-	MetaData []*fileMeta.FileMetaStruct
+	MetaData []*FileMeta
+}
+
+//NewFileCollector - конструктор FileCollector
+func NewFileCollector() *FileCollector {
+	buf := new(bytes.Buffer)
+	return &FileCollector{
+		ZipBuf:   buf,
+		Zip:      zip.NewWriter(buf),
+		MetaData: make([]*FileMeta, 0, 100),
+	}
+}
+
+func (f *FileCollector) meta2json() (js []byte, err error) {
+	return json.Marshal(f.MetaData)
+}
+
+func (f *FileCollector) addMeta(fullPath string) {
+
+	f.MetaData = append(f.MetaData, &FileMeta{
+		Name: fullPath,
+	})
+
+	return
+}
+
+func (f *FileCollector) packFile(filename string, fileReader io.Reader) (err error) {
+	var fileWriter io.Writer
+
+	if fileWriter, err = f.Zip.Create(filename); err != nil {
+		return
+	}
+
+	if _, err = io.Copy(fileWriter, fileReader); err != nil {
+		return
+	}
+
+	return
+}
+
+func (f *FileCollector) zipData() (data []byte, err error) {
+
+	if err = f.Zip.Close(); err != nil {
+		return
+	}
+
+	data = f.ZipBuf.Bytes()
+	return
 }

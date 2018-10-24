@@ -8,7 +8,7 @@ import (
 	"github.com/fullsailor/pkcs7"
 )
 
-// signData - имя папки с файлами, которые нужно добавить в архив
+// signData - подпись
 func SignData(data []byte) (signed []byte, err error) {
 	var signedData *pkcs7.SignedData
 

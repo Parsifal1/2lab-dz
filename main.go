@@ -9,8 +9,6 @@ import (
 
 func main() {
 
-	output := "done.zip"
-
 	var mode string
 
 	flag.StringVar(&mode, "mode", "z", "Режим работы приложения")
@@ -21,7 +19,7 @@ func main() {
 
 	switch mode {
 	case "z":
-		err = zipData.ZipFiles(output, "filesDir")
+		err = zipData.ZipFiles()
 	}
 
 	if err != nil {
