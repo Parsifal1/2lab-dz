@@ -57,7 +57,7 @@ func (f *FileCollector) WalkFiles(filepath string) (err error) {
 			return
 		}
 
-		if err = f.packFile(fullPath, fileReader); err != nil {
+		if err = f.PackFile(fullPath, fileReader); err != nil {
 			return
 		}
 	}
@@ -65,7 +65,7 @@ func (f *FileCollector) WalkFiles(filepath string) (err error) {
 	return
 }
 
-func (f *FileCollector) packFile(filename string, fileReader io.Reader) (err error) {
+func (f *FileCollector) PackFile(filename string, fileReader io.Reader) (err error) {
 	var fileWriter io.Writer
 
 	if fileWriter, err = f.Zip.Create(filename); err != nil {

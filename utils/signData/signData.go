@@ -18,16 +18,21 @@ func SignData(data []byte) (signed []byte, err error) {
 
 	var cert tls.Certificate
 
+	if cert, err = tls.LoadX509KeyPair("./my.crt", "./my.key"); err != nil {
+		return
+	}
+
 	if len(cert.Certificate) == 0 {
 		return nil, fmt.Errorf("Не удалось загрузить сертификат")
 	}
 
-	rsaKey := cert.PrivateKey
 	var rsaCert *x509.Certificate
 
 	if rsaCert, err = x509.ParseCertificate(cert.Certificate[0]); err != nil {
 		return
 	}
+
+	rsaKey := cert.PrivateKey
 
 	if err = signedData.AddSigner(rsaCert, rsaKey, pkcs7.SignerInfoConfig{}); err != nil {
 		return
