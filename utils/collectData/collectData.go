@@ -3,6 +3,7 @@ package collectData
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha1"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -12,7 +13,11 @@ import (
 
 //FileMeta - единица передачи метаданных файла
 type FileMeta struct {
-	Name string // `json: "filename"`
+	Name           string   `json: "filename"`
+	OriginalSize   uint64   `json:"original_size"`
+	CompressedSize uint64   `json:"compressed_size"`
+	ModTime        string   `json:"mod_time"`
+	Sha1Hash       [20]byte `json:"sha1_hash"`
 }
 
 //FileCollector - для сбора итогового файла
@@ -36,6 +41,8 @@ func NewFileCollector() *FileCollector {
 func (f *FileCollector) WalkFiles(filepath string) (err error) {
 	var files []os.FileInfo
 	var fileReader *os.File
+	var header *zip.FileHeader
+	var fileBytes []byte
 
 	if files, err = ioutil.ReadDir(filepath); err != nil {
 		return
@@ -50,15 +57,24 @@ func (f *FileCollector) WalkFiles(filepath string) (err error) {
 				return
 			}
 			continue
-		}
-		f.addMeta(fullPath)
+		} else {
+			if header, err = zip.FileInfoHeader(files[i]); err != nil {
+				return
+			}
 
-		if fileReader, err = os.Open(fullPath); err != nil {
-			return
-		}
+			if fileBytes, err = ioutil.ReadFile(fullPath); err != nil {
+				return
+			}
 
-		if err = f.PackFile(fullPath, fileReader); err != nil {
-			return
+			f.addMeta(header, fullPath, fileBytes)
+
+			if fileReader, err = os.Open(fullPath); err != nil {
+				return
+			}
+
+			if err = f.PackFile(fullPath, fileReader); err != nil {
+				return
+			}
 		}
 	}
 
@@ -83,11 +99,14 @@ func (f *FileCollector) Meta2json() (js []byte, err error) {
 	return json.Marshal(f.MetaData)
 }
 
-func (f *FileCollector) addMeta(fullPath string) {
+func (f *FileCollector) addMeta(header *zip.FileHeader, fullPath string, fileBytes []byte) {
 
 	f.MetaData = append(f.MetaData, &FileMeta{
-		Name: fullPath,
-	})
+		Name:           fullPath,
+		OriginalSize:   header.UncompressedSize64,
+		CompressedSize: header.CompressedSize64,
+		ModTime:        header.Modified.Format("Mon Jan 2 15:04:05 MST 2006"),
+		Sha1Hash:       sha1.Sum(fileBytes)})
 
 	return
 }
