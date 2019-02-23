@@ -9,7 +9,7 @@ import (
 )
 
 func main() { // Feature Collection
-	var coordinates [][][][]float64
+	var coordinates [][][][][]float64
 	var err error
 
 	if coordinates, err = getMultyCoordinates(); err != nil {
@@ -17,16 +17,21 @@ func main() { // Feature Collection
 	}
 
 	dc := gg.NewContext(2366, 2024)
+
 	//рисуем MultyPolygon
 	for i := 0; i < len(coordinates); i++ {
-		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		drawPolygon(dc, coordinates[i][0], 10)
+		for j := 0; j < len(coordinates[i]); j++ {
+			dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
+			drawPolygon(dc, coordinates[i][j][0], 10)
+		}
 	}
 
-	//рисуем контуры
+	// //рисуем контуры
 	for i := 0; i < len(coordinates); i++ {
-		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		drawLine(dc, coordinates[i][0], 10)
+		for j := 0; j < len(coordinates[i]); j++ {
+			dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
+			drawLine(dc, coordinates[i][j][0], 10)
+		}
 	}
 
 	dc.SavePNG("out.png")
@@ -75,11 +80,20 @@ func drawLine(dc *gg.Context, coordinates [][]float64, scale float64) {
 	}
 
 	dc.LineTo(x0, y0)
-	dc.SetLineWidth(10)
+	dc.SetLineWidth(5)
 	dc.Stroke()
 }
 
-func getMultyCoordinates() ([][][][]float64, error) {
+func revertX(x float64, scale float64) float64 {
+	if x < 0 {
+		x = x / scale
+		x = 360 + x
+		x = x * scale
+	}
+	return x
+}
+
+func getMultyCoordinates() ([][][][][]float64, error) {
 	var featureCollectionJSON []byte
 	var filePath string
 	var err error
@@ -95,16 +109,13 @@ func getMultyCoordinates() ([][][][]float64, error) {
 		return nil, err
 	}
 
-	var coordinates = featureCollection.Features[0].Geometry.MultiPolygon
+	var features = featureCollection.Features
+
+	var coordinates [][][][][]float64
+
+	for i := 0; i < len(features); i++ {
+		coordinates = append(coordinates, features[i].Geometry.MultiPolygon)
+	}
 
 	return coordinates, nil
-}
-
-func revertX(x float64, scale float64) float64 {
-	if x < 0 {
-		x = x / scale
-		x = 360 + x
-		x = x * scale
-	}
-	return x
 }
