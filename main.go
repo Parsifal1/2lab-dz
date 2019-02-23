@@ -1,74 +1,110 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
+	"math/rand"
 
-	"github.com/davvo/mercator"
 	"github.com/fogleman/gg"
 	geojson "github.com/paulmach/go.geojson"
 )
 
 func main() { // Feature Collection
-	var featureCollectionJSON []byte
-	var filePath string
+	var coordinates [][][][]float64
 	var err error
 
-	filePath = "geo.json"
-
-	if featureCollectionJSON, err = ioutil.ReadFile(filePath); err != nil {
+	if coordinates, err = getMultyCoordinates(); err != nil {
 		return
 	}
 
-	var featureCollection *geojson.FeatureCollection
-
-	if featureCollection, err = geojson.UnmarshalFeatureCollection(featureCollectionJSON); err != nil {
-		return
+	dc := gg.NewContext(2366, 2024)
+	//рисуем MultyPolygon
+	for i := 0; i < len(coordinates); i++ {
+		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
+		drawPolygon(dc, coordinates[i][0], 10)
 	}
 
-	var coordinates = featureCollection.Features[0].Geometry.Polygon[0]
-
-	dc := gg.NewContext(1000, 1000)
-	dc.SetRGB(1, 1, 0)
-	drawPolygon(dc, coordinates, 3)
-
-	dc.SetRGB(1, 0, 0)
-	dc.DrawCircle(0, 0, 10)
-	dc.DrawCircle(float64(dc.Width()), float64(dc.Height()), 10)
-	dc.DrawCircle(float64(dc.Width()), 0, 10)
-	dc.DrawCircle(0, float64(dc.Height()), 10)
-	dc.SetLineWidth(100)
-	dc.DrawCircle(0, float64(dc.Height()/2), 10)
-	dc.DrawCircle(float64(dc.Width()/2), float64(dc.Height()/2), 10)
-	dc.DrawCircle(float64(dc.Width()), float64(dc.Height()/2), 10)
-	dc.Fill()
+	//рисуем контуры
+	for i := 0; i < len(coordinates); i++ {
+		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
+		drawLine(dc, coordinates[i][0], 10)
+	}
 
 	dc.SavePNG("out.png")
 }
 
 func drawPolygon(dc *gg.Context, coordinates [][]float64, scale float64) {
 	x0 := coordinates[0][0] * scale
-	y0 := coordinates[0][1] * scale * 2
+	y0 := coordinates[0][1] * scale * 2.1
 
-	y0 = float64(dc.Height()/2) - y0
+	x0 = revertX(x0, scale)
+	y0 = float64(dc.Height()) - y0
+
 	dc.MoveTo(x0, y0)
+
 	for index := 1; index < len(coordinates)-1; index++ {
 		x := coordinates[index][0] * scale
-		y := coordinates[index][1] * scale * 2
+		y := coordinates[index][1] * scale * 2.1
 
-		y = float64(dc.Height()/2) - y
+		x = revertX(x, scale)
+		y = float64(dc.Height()) - y
+
 		dc.LineTo(x, y)
 	}
+
 	dc.LineTo(x0, y0)
 	dc.Fill()
 }
 
-func convert(x, y float64) (float64, float64) {
-	var x0, y0, z = x, y, 2
-	var px, py = mercator.LatLonToPixels(x, y, z)
-	px = px / 10
-	py = py / 10
-	fmt.Printf("asd: %f, %f\n", x0, y0)
-	fmt.Printf("Pixels (zoom %d): %f, %f\n", z, px, py)
-	return px, py
+func drawLine(dc *gg.Context, coordinates [][]float64, scale float64) {
+	x0 := coordinates[0][0] * scale
+	y0 := coordinates[0][1] * scale * 2.1
+
+	x0 = revertX(x0, scale)
+	y0 = float64(dc.Height()) - y0
+
+	dc.MoveTo(x0, y0)
+
+	for index := 1; index < len(coordinates)-1; index++ {
+		x := coordinates[index][0] * scale
+		y := coordinates[index][1] * scale * 2.1
+
+		x = revertX(x, scale)
+		y = float64(dc.Height()) - y
+
+		dc.LineTo(x, y)
+	}
+
+	dc.LineTo(x0, y0)
+	dc.SetLineWidth(10)
+	dc.Stroke()
+}
+
+func getMultyCoordinates() ([][][][]float64, error) {
+	var featureCollectionJSON []byte
+	var filePath string
+	var err error
+
+	filePath = "rf.geojson"
+
+	if featureCollectionJSON, err = ioutil.ReadFile(filePath); err != nil {
+		return nil, err
+	}
+	var featureCollection *geojson.FeatureCollection
+
+	if featureCollection, err = geojson.UnmarshalFeatureCollection(featureCollectionJSON); err != nil {
+		return nil, err
+	}
+
+	var coordinates = featureCollection.Features[0].Geometry.MultiPolygon
+
+	return coordinates, nil
+}
+
+func revertX(x float64, scale float64) float64 {
+	if x < 0 {
+		x = x / scale
+		x = 360 + x
+		x = x * scale
+	}
+	return x
 }
