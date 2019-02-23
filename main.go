@@ -20,14 +20,22 @@ func main() {
 	scale := 5.0
 
 	//рисуем полигоны
-	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64) {
-		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
+	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
+		if i == 10 {
+			dc.SetRGB(float64(i/10), float64(j/15), float64(i*j/150))
+		} else {
+			dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
+		}
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Fill)
 	})
 	//рисуем контуры полигонов
-	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64) {
+	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
+		if i == 10 {
+			dc.SetRGB(float64(i/10), float64(j/15), float64(i*j/150))
+		} else {
+			dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
+		}
 		dc.SetLineWidth(3)
-		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke)
 	})
 
@@ -54,10 +62,10 @@ func getMultyCoordinates() ([][][][][]float64, error) {
 	return coordinates, nil
 }
 
-func forEachPolygon(dc *gg.Context, coordinates [][][][][]float64, callback func([][]float64)) {
+func forEachPolygon(dc *gg.Context, coordinates [][][][][]float64, callback func([][]float64, int, int)) {
 	for i := 0; i < len(coordinates); i++ {
 		for j := 0; j < len(coordinates[i]); j++ {
-			callback(coordinates[i][j][0])
+			callback(coordinates[i][j][0], i, j)
 		}
 	}
 }
