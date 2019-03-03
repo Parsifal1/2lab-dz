@@ -1,19 +1,35 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"strconv"
 
 	"github.com/fogleman/gg"
 	geojson "github.com/paulmach/go.geojson"
 )
 
 func main() {
+	var featureCollectionJSON []byte
+	var filePath = "rf.geojson"
+	var err error
+
+	if featureCollectionJSON, err = ioutil.ReadFile(filePath); err != nil {
+		fmt.Println(err.Error())
+	}
+
+	if _, err = getPNG(featureCollectionJSON); err != nil {
+		fmt.Println(err.Error())
+	}
+}
+
+func getPNG(featureCollectionJSON []byte) (string, error) {
 	var coordinates [][][][][]float64
 	var err error
 
-	if coordinates, err = getMultyCoordinates(); err != nil {
-		return
+	if coordinates, err = getMultyCoordinates(featureCollectionJSON); err != nil {
+		return "", err
 	}
 
 	dc := gg.NewContext(1366, 1024)
@@ -21,36 +37,27 @@ func main() {
 
 	//рисуем полигоны
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
-		if i == 10 {
-			dc.SetRGB(float64(i/10), float64(j/15), float64(i*j/150))
-		} else {
-			dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		}
+		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Fill)
 	})
 	//рисуем контуры полигонов
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
-		if i == 10 {
-			dc.SetRGB(float64(i/10), float64(j/15), float64(i*j/150))
-		} else {
-			dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		}
+		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
 		dc.SetLineWidth(3)
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke)
 	})
 
-	dc.SavePNG("out.png")
+	var out = strconv.Itoa(rand.Intn(10000)) + ".png"
+
+	dc.SavePNG(out)
+
+	return out, nil
 }
 
-func getMultyCoordinates() ([][][][][]float64, error) {
-	var featureCollectionJSON []byte
-	var filePath string
-	var err error
-	filePath = "rf.geojson"
-	if featureCollectionJSON, err = ioutil.ReadFile(filePath); err != nil {
-		return nil, err
-	}
+func getMultyCoordinates(featureCollectionJSON []byte) ([][][][][]float64, error) {
 	var featureCollection *geojson.FeatureCollection
+	var err error
+
 	if featureCollection, err = geojson.UnmarshalFeatureCollection(featureCollectionJSON); err != nil {
 		return nil, err
 	}
