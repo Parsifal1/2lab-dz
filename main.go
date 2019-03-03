@@ -12,6 +12,7 @@ import (
 	// пакет для работы с  UTF-8 строками
 )
 
+var cache map[string]string
 var imgSrc string
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -32,10 +33,15 @@ func drawHandler(w http.ResponseWriter, r *http.Request) {
 	var featureCollectionJSON []byte
 	var err error
 
-	featureCollectionJSON = []byte(content)
+	if cache[content] != "" {
+		imgSrc = cache[content]
+	} else {
+		featureCollectionJSON = []byte(content)
 
-	if imgSrc, err = getPNG(featureCollectionJSON); err != nil {
-		fmt.Println(err.Error())
+		if imgSrc, err = getPNG(featureCollectionJSON); err != nil {
+			fmt.Println(err.Error())
+		}
+		cache[content] = imgSrc
 	}
 
 	http.Redirect(w, r, "/", 302)
@@ -44,6 +50,7 @@ func drawHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 
 	imgSrc = ""
+	cache = make(map[string]string, 0)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets/"))))
 	http.HandleFunc("/", indexHandler)
