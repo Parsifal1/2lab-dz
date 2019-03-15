@@ -11,12 +11,22 @@
 
 <body>
     <form action="/draw" method="POST">
-        <textarea name="content" cols="30" rows="10"></textarea>
+        <textarea name="content" cols="30" rows="10">
+            {"type":"FeatureCollection","geocoding":{"creation_date":"2016-01-09","generator":{"author":{"name":"Mapzen"},"package":"fences-builder","version":"0.1.2"},"license":"ODbL (see http://www.openstreetmap.org/copyright)"},"features":[
+            {"id":192072194,"osm_type":"way","type":"Feature","name":"урочище Ишмик","properties":{"name":"урочище Ишмик","note":"эксклав Ишмик","source":"Яндекс","boundary":"administrative","admin_level":"3"},"geometry":{"type":"MultiPolygon","coordinates":[[[[38.72652890000001,58.77855670000001],[38.71925290000001,58.7756868],[38.684535200000006,58.779076700000005],[38.69270000000001,58.791144],[38.700425,58.805354],[38.702485,58.804818999999995],[38.714759,58.79622200000001],[38.713815000000004,58.79600000000001],[38.72033800000001,58.7926464],[38.72299900000001,58.786242],[38.72652890000001,58.77855670000001]]]]}}]}
+           
+        </textarea>
         <button type="submit">Draw</button>
     </form>
-    <div>
-        <img src={{.}} alt="map">
-    </div>
+    <div id="imageContainer">{{.}}</div>
+    <script>
+        const image = document.createElement("img");
+        const imageContainer = document.querySelector("#imageContainer");
+        image.src = "data:image/png;base64, " + imageContainer.innerHTML;
+        image.alt = "asd";
+        imageContainer.innerHTML = "";
+        imageContainer.appendChild(image);
+    </script>
 </body>
 
 </html>

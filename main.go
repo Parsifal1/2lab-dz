@@ -1,19 +1,24 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"           // пакет для форматированного ввода вывода
 	"html/template" // пакет для логирования
+	"image"
+	"image/png"
 	"math/rand"
 	"net/http" // пакет для поддержки HTTP протокола
-	"strconv"
 
 	"github.com/fogleman/gg"
 	geojson "github.com/paulmach/go.geojson"
 	// пакет для работы с  UTF-8 строками
 )
 
-var cache map[string]string
-var imgSrc string
+var cache map[string]image.Image
+var img image.Image
+var buffer *bytes.Buffer
+var imgBase64Str string
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("./index.html")
@@ -21,9 +26,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, err.Error())
 	}
 
-	fmt.Println(imgSrc)
-
-	t.ExecuteTemplate(w, "index", imgSrc)
+	t.ExecuteTemplate(w, "index", imgBase64Str)
 
 }
 
@@ -33,24 +36,30 @@ func drawHandler(w http.ResponseWriter, r *http.Request) {
 	var featureCollectionJSON []byte
 	var err error
 
-	if cache[content] != "" {
-		imgSrc = cache[content]
+	if cache[content] != nil {
+		img = cache[content]
 	} else {
 		featureCollectionJSON = []byte(content)
 
-		if imgSrc, err = getPNG(featureCollectionJSON); err != nil {
+		if img, err = getPNG(featureCollectionJSON); err != nil {
 			fmt.Println(err.Error())
 		}
-		cache[content] = imgSrc
+		cache[content] = img
 	}
+
+	buffer = new(bytes.Buffer) //buffer - *bytes.Buffer
+	png.Encode(buffer, img)    //img - image.Image
+	bufferBytes := buffer.Bytes()
+	imgBase64Str = base64.StdEncoding.EncodeToString(bufferBytes)
 
 	http.Redirect(w, r, "/", 302)
 }
 
 func main() {
 
-	imgSrc = ""
-	cache = make(map[string]string, 0)
+	img = nil
+	buffer = nil
+	cache = make(map[string]image.Image, 0)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets/"))))
 	http.HandleFunc("/", indexHandler)
@@ -59,12 +68,12 @@ func main() {
 	http.ListenAndServe(":3000", nil)
 }
 
-func getPNG(featureCollectionJSON []byte) (string, error) {
+func getPNG(featureCollectionJSON []byte) (image.Image, error) {
 	var coordinates [][][][][]float64
 	var err error
 
 	if coordinates, err = getMultyCoordinates(featureCollectionJSON); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	dc := gg.NewContext(1366, 1024)
@@ -82,9 +91,7 @@ func getPNG(featureCollectionJSON []byte) (string, error) {
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke)
 	})
 
-	var out = strconv.Itoa(rand.Intn(10000)) + ".png"
-	out = "assets/" + out
-	dc.SavePNG(out)
+	out := dc.Image()
 
 	return out, nil
 }
