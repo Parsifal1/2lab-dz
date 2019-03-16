@@ -2,23 +2,21 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"           // пакет для форматированного ввода вывода
 	"html/template" // пакет для логирования
 	"image"
 	"image/png"
+	"io/ioutil"
 	"math/rand"
 	"net/http" // пакет для поддержки HTTP протокола
 
 	"github.com/fogleman/gg"
+	"github.com/gorilla/mux"
 	geojson "github.com/paulmach/go.geojson"
 	// пакет для работы с  UTF-8 строками
 )
 
 var cache map[string]image.Image
-var img image.Image
-var buffer *bytes.Buffer
-var imgBase64Str string
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("./index.html")
@@ -26,44 +24,51 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, err.Error())
 	}
 
-	t.ExecuteTemplate(w, "index", imgBase64Str)
+	t.ExecuteTemplate(w, "index", "hello")
 
 }
 
-func drawHandler(w http.ResponseWriter, r *http.Request) {
-	content := r.FormValue("content")
+func draw(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "image/png")
+
+	vars := mux.Vars(r)
+	z := vars["z"]
+	x := vars["x"]
+	y := vars["y"]
+	key := string(z) + " " + string(x) + " " + string(y)
+
+	var img image.Image
 
 	var featureCollectionJSON []byte
+	var filePath = "rf.geojson"
 	var err error
 
-	if cache[content] != nil {
-		img = cache[content]
+	if cache[key] != nil {
+		img = cache[key]
 	} else {
-		featureCollectionJSON = []byte(content)
+		if featureCollectionJSON, err = ioutil.ReadFile(filePath); err != nil {
+			fmt.Println(err.Error())
+		}
 
 		if img, err = getPNG(featureCollectionJSON); err != nil {
 			fmt.Println(err.Error())
 		}
-		cache[content] = img
+		cache[key] = img
 	}
 
-	buffer = new(bytes.Buffer) //buffer - *bytes.Buffer
-	png.Encode(buffer, img)    //img - image.Image
+	buffer := new(bytes.Buffer) //buffer - *bytes.Buffer
+	png.Encode(buffer, img)     //img - image.Image
 	bufferBytes := buffer.Bytes()
-	imgBase64Str = base64.StdEncoding.EncodeToString(bufferBytes)
-
-	http.Redirect(w, r, "/", 302)
+	w.Write(bufferBytes)
 }
 
 func main() {
-
-	img = nil
-	buffer = nil
 	cache = make(map[string]image.Image, 0)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets/"))))
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/draw", drawHandler)
+	http.HandleFunc("/tile", draw)
 
 	http.ListenAndServe(":3000", nil)
 }

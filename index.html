@@ -7,25 +7,45 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Page Title</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
+        integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+        crossorigin="" />
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
+        integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
+        crossorigin=""></script>
+
 </head>
 
 <body>
-    <form action="/draw" method="POST">
-        <textarea name="content" cols="30" rows="10">
-            {"type":"FeatureCollection","geocoding":{"creation_date":"2016-01-09","generator":{"author":{"name":"Mapzen"},"package":"fences-builder","version":"0.1.2"},"license":"ODbL (see http://www.openstreetmap.org/copyright)"},"features":[
-            {"id":192072194,"osm_type":"way","type":"Feature","name":"урочище Ишмик","properties":{"name":"урочище Ишмик","note":"эксклав Ишмик","source":"Яндекс","boundary":"administrative","admin_level":"3"},"geometry":{"type":"MultiPolygon","coordinates":[[[[38.72652890000001,58.77855670000001],[38.71925290000001,58.7756868],[38.684535200000006,58.779076700000005],[38.69270000000001,58.791144],[38.700425,58.805354],[38.702485,58.804818999999995],[38.714759,58.79622200000001],[38.713815000000004,58.79600000000001],[38.72033800000001,58.7926464],[38.72299900000001,58.786242],[38.72652890000001,58.77855670000001]]]]}}]}
-           
-        </textarea>
-        <button type="submit">Draw</button>
-    </form>
-    <div id="imageContainer">{{.}}</div>
+    <div id="map"></div>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #map {
+            height: 100vh;
+            user-select: none;
+        }
+    </style>
     <script>
-        const image = document.createElement("img");
-        const imageContainer = document.querySelector("#imageContainer");
-        image.src = "data:image/png;base64, " + imageContainer.innerHTML;
-        image.alt = "asd";
-        imageContainer.innerHTML = "";
-        imageContainer.appendChild(image);
+        // var mymap = L.map('mapid').setView([51.505, -0.09], 13);
+
+        // L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+        //     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        //     maxZoom: 18,
+        //     id: 'mapbox.streets',
+        //     accessToken: 'pk.eyJ1IjoibGRydjU2NSIsImEiOiJjanQ5d3E0Y28wNTFnM3lxZGEyejcyajZrIn0.OrgUD7x2tVjO8z1xdwEyPw'
+        // }).addTo(mymap);
+
+        var map = L.map('map').setView([0, 0], 0);
+
+        L.tileLayer('http://localhost:8080/tile', {
+            attribution: 'created by ldrv565',
+            maxZoom: 100,
+            id: 'rf'
+        }).addTo(map);
     </script>
 </body>
 
