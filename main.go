@@ -31,11 +31,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func draw(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	key := r.URL.String()
-	println(key)
-
 	keys := strings.Split(key, "/")
 
 	z, err := strconv.ParseFloat(keys[2], 64)
