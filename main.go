@@ -134,7 +134,7 @@ func drawByPolygonCoordinates(dc *gg.Context, coordinates [][]float64, scale flo
 	}
 
 	dx := float64(dc.Width()) * (xTile)
-	dy := float64(dc.Height()) * (z - yTile)
+	dy := float64(dc.Height()) * (math.Pow(2, z) - 1 - yTile)
 
 	x0 := convertNegativeX(coordinates[0][0])*scale - dx
 	y0 := coordinates[0][1]*scale*2.1 - dy
