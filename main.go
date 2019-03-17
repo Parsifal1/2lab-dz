@@ -130,9 +130,7 @@ func forEachPolygon(dc *gg.Context, coordinates [][][][][]float64, callback func
 
 func drawByPolygonCoordinates(dc *gg.Context, coordinates [][]float64, scale float64, method func(), z float64, xTile float64, yTile float64) {
 
-	if z != 0 {
-		scale = scale * math.Pow(2, z)
-	}
+	scale = scale * math.Pow(2, z)
 
 	dx := float64(dc.Width()) * (xTile)
 	dy := float64(dc.Height()) * (math.Pow(2, z) - 1 - yTile)
