@@ -18,7 +18,7 @@ import (
 	// пакет для работы с  UTF-8 строками
 )
 
-var cache map[string]image.Image
+var cache map[string][]byte
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("./index.html")
@@ -42,12 +42,13 @@ func draw(w http.ResponseWriter, r *http.Request) {
 	y, err := strconv.ParseFloat(keys[4], 64)
 
 	var img image.Image
+	var imgBytes []byte
 
 	var featureCollectionJSON []byte
 	var filePath = "rf.geojson"
 
 	if cache[key] != nil {
-		img = cache[key]
+		imgBytes = cache[key]
 	} else {
 		if featureCollectionJSON, err = ioutil.ReadFile(filePath); err != nil {
 			fmt.Println(err.Error())
@@ -56,17 +57,18 @@ func draw(w http.ResponseWriter, r *http.Request) {
 		if img, err = getPNG(featureCollectionJSON, z, x, y); err != nil {
 			fmt.Println(err.Error())
 		}
-		cache[key] = img
+
+		buffer := new(bytes.Buffer) //buffer - *bytes.Buffer
+		png.Encode(buffer, img)     //img - image.Image
+		imgBytes = buffer.Bytes()
+		cache[key] = imgBytes
 	}
 
-	buffer := new(bytes.Buffer) //buffer - *bytes.Buffer
-	png.Encode(buffer, img)     //img - image.Image
-	bufferBytes := buffer.Bytes()
-	w.Write(bufferBytes)
+	w.Write(imgBytes)
 }
 
 func main() {
-	cache = make(map[string]image.Image, 0)
+	cache = make(map[string][]byte, 0)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets/"))))
 	http.HandleFunc("/", indexHandler)
