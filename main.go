@@ -7,11 +7,13 @@ import (
 	"image"
 	"image/png"
 	"io/ioutil"
+	"math"
 	"math/rand"
 	"net/http" // пакет для поддержки HTTP протокола
+	"strconv"
+	"strings"
 
 	"github.com/fogleman/gg"
-	"github.com/gorilla/mux"
 	geojson "github.com/paulmach/go.geojson"
 	// пакет для работы с  UTF-8 строками
 )
@@ -29,20 +31,21 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func draw(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Content-Type", "image/png")
+	var err error
 
-	vars := mux.Vars(r)
-	z := vars["z"]
-	x := vars["x"]
-	y := vars["y"]
-	key := string(z) + " " + string(x) + " " + string(y)
+	key := r.URL.String()
+	println(key)
+
+	keys := strings.Split(key, "/")
+
+	z, err := strconv.ParseFloat(keys[2], 64)
+	x, err := strconv.ParseFloat(keys[3], 64)
+	y, err := strconv.ParseFloat(keys[4], 64)
 
 	var img image.Image
 
 	var featureCollectionJSON []byte
 	var filePath = "rf.geojson"
-	var err error
 
 	if cache[key] != nil {
 		img = cache[key]
@@ -51,7 +54,7 @@ func draw(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(err.Error())
 		}
 
-		if img, err = getPNG(featureCollectionJSON); err != nil {
+		if img, err = getPNG(featureCollectionJSON, z, x, y); err != nil {
 			fmt.Println(err.Error())
 		}
 		cache[key] = img
@@ -68,12 +71,12 @@ func main() {
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets/"))))
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/tile", draw)
+	http.HandleFunc("/tile/", draw)
 
 	http.ListenAndServe(":3000", nil)
 }
 
-func getPNG(featureCollectionJSON []byte) (image.Image, error) {
+func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (image.Image, error) {
 	var coordinates [][][][][]float64
 	var err error
 
@@ -87,13 +90,13 @@ func getPNG(featureCollectionJSON []byte) (image.Image, error) {
 	//рисуем полигоны
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
 		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Fill)
+		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Fill, z, x, y)
 	})
 	//рисуем контуры полигонов
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
 		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
 		dc.SetLineWidth(3)
-		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke)
+		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke, z, x, y)
 	})
 
 	out := dc.Image()
@@ -124,18 +127,27 @@ func forEachPolygon(dc *gg.Context, coordinates [][][][][]float64, callback func
 	}
 }
 
-func drawByPolygonCoordinates(dc *gg.Context, coordinates [][]float64, scale float64, method func()) {
-	x0 := convertNegativeX(coordinates[0][0]) * scale
-	y0 := coordinates[0][1] * scale * 2.1
+func drawByPolygonCoordinates(dc *gg.Context, coordinates [][]float64, scale float64, method func(), z float64, xTile float64, yTile float64) {
+
+	if z != 0 {
+		scale = scale * math.Pow(2, z)
+	}
+
+	dx := float64(dc.Width()) * (xTile)
+	dy := float64(dc.Height()) * (z - yTile)
+
+	x0 := convertNegativeX(coordinates[0][0])*scale - dx
+	y0 := coordinates[0][1]*scale*2.1 - dy
 	y0 = float64(dc.Height()) - y0
 	dc.MoveTo(x0, y0)
 	for index := 1; index < len(coordinates)-1; index++ {
-		x := convertNegativeX(coordinates[index][0]) * scale
-		y := coordinates[index][1] * scale * 2.1
+		x := convertNegativeX(coordinates[index][0])*scale - dx
+		y := coordinates[index][1]*scale*2.1 - dy
 		y = float64(dc.Height()) - y
 		dc.LineTo(x, y)
 	}
 	dc.LineTo(x0, y0)
+
 	method()
 }
 
