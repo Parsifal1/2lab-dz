@@ -85,8 +85,8 @@ func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (imag
 		return nil, err
 	}
 
-	dc := gg.NewContext(1366, 1024)
-	scale := 5.0
+	dc := gg.NewContext(256, 256)
+	scale := 1.0
 
 	//рисуем полигоны
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
@@ -96,7 +96,7 @@ func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (imag
 	//рисуем контуры полигонов
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
 		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		dc.SetLineWidth(3)
+		dc.SetLineWidth(2)
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke, z, x, y)
 	})
 
