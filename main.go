@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/davvo/mercator"
+
 	"github.com/fogleman/gg"
 	geojson "github.com/paulmach/go.geojson"
 	// пакет для работы с  UTF-8 строками
@@ -86,18 +88,12 @@ func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (imag
 	}
 
 	dc := gg.NewContext(256, 256)
+	dc.InvertY()
 	scale := 0.7
 
 	//рисуем полигоны
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
-		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Fill, z, x, y)
-	})
-	//рисуем контуры полигонов
-	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
-		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		dc.SetLineWidth(1)
-		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke, z, x, y)
 	})
 
 	out := dc.Image()
@@ -132,21 +128,14 @@ func drawByPolygonCoordinates(dc *gg.Context, coordinates [][]float64, scale flo
 
 	scale = scale * math.Pow(2, z)
 
-	dx := float64(dc.Width())*(xTile) - 130*math.Pow(2, z)
-	dy := float64(dc.Height())*(math.Pow(2, z)-1-yTile) - 90*math.Pow(2, z)
-
-	x0 := convertNegativeX(coordinates[0][0], z)*scale - dx
-	y0 := coordinates[0][1]*scale*2.2 - dy
-	y0 = float64(dc.Height()) - y0
-	dc.MoveTo(x0, y0)
-	for index := 1; index < len(coordinates)-1; index++ {
-		x := convertNegativeX(coordinates[index][0], z)*scale - dx
-		y := coordinates[index][1]*scale*2.2 - dy
-		y = float64(dc.Height()) - y
+	for index := 0; index < len(coordinates)-1; index++ {
+		x, y := mercator.LatLonToMeters(coordinates[index][1], coordinates[index][0])
 		dc.LineTo(x, y)
 	}
-	dc.LineTo(x0, y0)
-
+	dc.ClosePath()
+	dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
+	dc.StrokePreserve()
+	dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
 	method()
 }
 
