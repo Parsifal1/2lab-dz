@@ -13,10 +13,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/davvo/mercator"
 	"github.com/fogleman/gg"
 	geojson "github.com/paulmach/go.geojson"
 	// пакет для работы с  UTF-8 строками
 )
+
+const width, height = 256, 256
 
 var cache map[string][]byte
 
@@ -85,18 +88,19 @@ func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (imag
 		return nil, err
 	}
 
-	dc := gg.NewContext(256, 256)
+	dc := gg.NewContext(width, height)
 	scale := 1.0
 
+	dc.InvertY()
 	//рисуем полигоны
-	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
+	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64) {
 		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Fill, z, x, y)
 	})
 	//рисуем контуры полигонов
-	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
+	dc.SetLineWidth(2)
+	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64) {
 		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		dc.SetLineWidth(2)
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke, z, x, y)
 	})
 
@@ -120,39 +124,58 @@ func getMultyCoordinates(featureCollectionJSON []byte) ([][][][][]float64, error
 	return coordinates, nil
 }
 
-func forEachPolygon(dc *gg.Context, coordinates [][][][][]float64, callback func([][]float64, int, int)) {
+func forEachPolygon(dc *gg.Context, coordinates [][][][][]float64, callback func([][]float64)) {
 	for i := 0; i < len(coordinates); i++ {
 		for j := 0; j < len(coordinates[i]); j++ {
-			callback(coordinates[i][j][0], i, j)
+			callback(coordinates[i][j][0])
 		}
 	}
 }
+
+const mercatorMaxValue float64 = 20037508.342789244
+
+const mercatorToCanvasScaleFactorX = float64(width) / (mercatorMaxValue)
+const mercatorToCanvasScaleFactorY = float64(height) / (mercatorMaxValue)
 
 func drawByPolygonCoordinates(dc *gg.Context, coordinates [][]float64, scale float64, method func(), z float64, xTile float64, yTile float64) {
 
 	scale = scale * math.Pow(2, z)
 
-	dx := float64(dc.Width()) * (xTile)
-	dy := float64(dc.Height()) * (math.Pow(2, z) - 1 - yTile)
+	dx := float64(dc.Width())*(xTile) - 138.5*scale
+	dy := float64(dc.Height())*(math.Pow(2, z)-1-yTile) - 128*scale
 
-	x0 := convertNegativeX(coordinates[0][0])*scale - dx
-	y0 := coordinates[0][1]*scale*2.1 - dy
-	y0 = float64(dc.Height()) - y0
-	dc.MoveTo(x0, y0)
-	for index := 1; index < len(coordinates)-1; index++ {
-		x := convertNegativeX(coordinates[index][0])*scale - dx
-		y := coordinates[index][1]*scale*2.1 - dy
-		y = float64(dc.Height()) - y
+	for index := 0; index < len(coordinates)-1; index++ {
+		x, y := mercator.LatLonToMeters(coordinates[index][1], convertNegativeX(coordinates[index][0]))
+
+		x, y = centerRussia(x, y)
+
+		x *= mercatorToCanvasScaleFactorX * scale * 0.5
+		y *= mercatorToCanvasScaleFactorY * scale * 0.5
+
+		x -= dx
+		y -= dy
+
 		dc.LineTo(x, y)
 	}
-	dc.LineTo(x0, y0)
-
+	dc.ClosePath()
 	method()
+}
+
+func centerRussia(x float64, y float64) (float64, float64) {
+	var west = float64(1635093.15883866)
+
+	if x > 0 {
+		x -= west
+	} else {
+		x += 2*mercatorMaxValue - west
+	}
+
+	return x, y
 }
 
 func convertNegativeX(x float64) float64 {
 	if x < 0 {
-		x = 360 + x
+		x = x - 360
 	}
 	return x
 }
