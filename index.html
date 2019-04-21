@@ -1,3 +1,4 @@
+{{define "index"}}
 <!DOCTYPE html>
 <html>
 
@@ -32,15 +33,13 @@
         var map = L.map('map').setView([0, 0], 0);
         L.control.scale().addTo(map);
 
-        var positron = L.tileLayer('http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png', {
-            attribution: '©OpenStreetMap, ©CartoDB'
-        }).addTo(map);
-
         L.tileLayer('http://localhost:3000/tile/{z}/{x}/{y}', {
             attribution: 'created by ldrv565',
+            maxZoom: 100,
             id: 'rf'
         }).addTo(map);
     </script>
 </body>
 
 </html>
+{{end}}

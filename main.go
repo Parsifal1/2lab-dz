@@ -86,7 +86,7 @@ func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (imag
 	}
 
 	dc := gg.NewContext(256, 256)
-	scale := 0.7
+	scale := 1.0
 
 	//рисуем полигоны
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
@@ -96,7 +96,7 @@ func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (imag
 	//рисуем контуры полигонов
 	forEachPolygon(dc, coordinates, func(polygonCoordinates [][]float64, i int, j int) {
 		dc.SetRGB(rand.Float64(), rand.Float64(), rand.Float64())
-		dc.SetLineWidth(1)
+		dc.SetLineWidth(2)
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke, z, x, y)
 	})
 
@@ -132,16 +132,16 @@ func drawByPolygonCoordinates(dc *gg.Context, coordinates [][]float64, scale flo
 
 	scale = scale * math.Pow(2, z)
 
-	dx := float64(dc.Width())*(xTile) - 130*math.Pow(2, z)
-	dy := float64(dc.Height())*(math.Pow(2, z)-1-yTile) - 90*math.Pow(2, z)
+	dx := float64(dc.Width()) * (xTile)
+	dy := float64(dc.Height()) * (math.Pow(2, z) - 1 - yTile)
 
-	x0 := convertNegativeX(coordinates[0][0], z)*scale - dx
-	y0 := coordinates[0][1]*scale*2.2 - dy
+	x0 := convertNegativeX(coordinates[0][0])*scale - dx
+	y0 := coordinates[0][1]*scale*2.1 - dy
 	y0 = float64(dc.Height()) - y0
 	dc.MoveTo(x0, y0)
 	for index := 1; index < len(coordinates)-1; index++ {
-		x := convertNegativeX(coordinates[index][0], z)*scale - dx
-		y := coordinates[index][1]*scale*2.2 - dy
+		x := convertNegativeX(coordinates[index][0])*scale - dx
+		y := coordinates[index][1]*scale*2.1 - dy
 		y = float64(dc.Height()) - y
 		dc.LineTo(x, y)
 	}
@@ -150,9 +150,9 @@ func drawByPolygonCoordinates(dc *gg.Context, coordinates [][]float64, scale flo
 	method()
 }
 
-func convertNegativeX(x float64, z float64) float64 {
+func convertNegativeX(x float64) float64 {
 	if x < 0 {
-		x = x - 5.715
+		x = 360 + x
 	}
 	return x
 }
