@@ -1,17 +1,13 @@
 package main
 
 import (
-	"bytes"
-	"fmt"           // пакет для форматированного ввода вывода
-	"html/template" // пакет для логирования
-	"image"
-	"image/png"
+	"fmt" // пакет для форматированного ввода вывода
+	// пакет для логирования
+
 	"io/ioutil"
 	"math"
-	"math/rand"
-	"net/http" // пакет для поддержки HTTP протокола
+	"math/rand" // пакет для поддержки HTTP протокола
 	"strconv"
-	"strings"
 
 	"github.com/davvo/mercator"
 	"github.com/fogleman/gg"
@@ -21,71 +17,39 @@ import (
 
 const width, height = 256, 256
 
-var cache map[string][]byte
-
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("./index.html")
-	if err != nil {
-		fmt.Fprintf(w, err.Error())
-	}
-
-	t.ExecuteTemplate(w, "index", "hello")
-
-}
-
-func draw(w http.ResponseWriter, r *http.Request) {
-
+func draw(z, x, y float64) {
 	var err error
-
-	key := r.URL.String()
-	keys := strings.Split(key, "/")
-
-	z, err := strconv.ParseFloat(keys[2], 64)
-	x, err := strconv.ParseFloat(keys[3], 64)
-	y, err := strconv.ParseFloat(keys[4], 64)
-
-	var img image.Image
-	var imgBytes []byte
+	var img string
 
 	var featureCollectionJSON []byte
 	var filePath = "rf.geojson"
 
-	if cache[key] != nil {
-		imgBytes = cache[key]
-	} else {
-		if featureCollectionJSON, err = ioutil.ReadFile(filePath); err != nil {
-			fmt.Println(err.Error())
-		}
-
-		if img, err = getPNG(featureCollectionJSON, z, x, y); err != nil {
-			fmt.Println(err.Error())
-		}
-
-		buffer := new(bytes.Buffer) //buffer - *bytes.Buffer
-		png.Encode(buffer, img)     //img - image.Image
-		imgBytes = buffer.Bytes()
-		cache[key] = imgBytes
+	if featureCollectionJSON, err = ioutil.ReadFile(filePath); err != nil {
+		fmt.Println(err.Error())
 	}
 
-	w.Write(imgBytes)
+	if img, err = getPNG(featureCollectionJSON, z, x, y); err != nil {
+		fmt.Println(err.Error())
+	}
+
+	println(img)
 }
 
 func main() {
-	cache = make(map[string][]byte, 0)
+	var z, x, y float64
+	z = 0.0
+	x = 0.0
+	y = 0.0
 
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets/"))))
-	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/tile/", draw)
-
-	http.ListenAndServe(":3000", nil)
+	draw(z, x, y)
 }
 
-func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (image.Image, error) {
+func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (string, error) {
 	var coordinates [][][][][]float64
 	var err error
 
 	if coordinates, err = getMultyCoordinates(featureCollectionJSON); err != nil {
-		return nil, err
+		return err.Error(), err
 	}
 
 	dc := gg.NewContext(width, height)
@@ -104,7 +68,9 @@ func getPNG(featureCollectionJSON []byte, z float64, x float64, y float64) (imag
 		drawByPolygonCoordinates(dc, polygonCoordinates, scale, dc.Stroke, z, x, y)
 	})
 
-	out := dc.Image()
+	var out = strconv.Itoa(rand.Intn(10000)) + ".png"
+
+	dc.SavePNG(out)
 
 	return out, nil
 }
