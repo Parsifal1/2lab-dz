@@ -37,10 +37,7 @@ func draw(z, x, y float64) {
 
 func main() {
 	var z, x, y float64
-	z = 0.0
-	x = 0.0
-	y = 0.0
-
+	fmt.Scan(&z, &x, &y)
 	draw(z, x, y)
 }
 
